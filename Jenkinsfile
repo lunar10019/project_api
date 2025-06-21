@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        PYTHON = 'python3'
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -8,25 +12,29 @@ pipeline {
             }
         }
 
-        stage('Install Python') {
+        stage('Verify Python') {
             steps {
-                sh '''
-                apt-get update -qq && \
-                apt-get install -y --no-install-recommends python3 python3-pip && \
-                python3 --version
-                '''
+                script {
+                    def pythonExists = sh(script: 'command -v python3', returnStatus: true) == 0
+                    if (!pythonExists) {
+                        error("Python3 не найден! Установите Python3 на сервер Jenkins или используйте Docker-агент")
+                    }
+
+                    sh '${PYTHON} --version'
+                }
             }
         }
 
-        stage('Setup Dependencies') {
+        stage('Setup Virtual Environment') {
             steps {
-                sh 'python3 -m pip install -r requirements.txt'
+                sh '${PYTHON} -m venv venv'
+                sh '. venv/bin/activate && pip install -r requirements.txt'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'python3 -m pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
+                sh '. venv/bin/activate && ${PYTHON} -m pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
             }
         }
 
