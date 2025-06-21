@@ -15,22 +15,42 @@ pipeline {
 
         stage('Setup') {
             steps {
-                sh 'pip install -r requirements.txt'
+                sh '''
+                    ${PYTHON} -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    pip install pytest allure-pytest pytest-html
+                '''
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
+                sh '''
+                    . venv/bin/activate
+                    ${PYTHON} -m pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html
+                '''
             }
         }
 
         stage('Generate Reports') {
             steps {
-                allure includeProperties: false,
-                      jdk: '',
-                      results: [[path: 'allure-results']]
-                archiveArtifacts artifacts: 'report.html', fingerprint: true
+                script {
+                    if (fileExists('allure-results')) {
+                        allure includeProperties: false,
+                              jdk: '',
+                              results: [[path: 'allure-results']]
+                    } else {
+                        echo 'No Allure results found'
+                    }
+
+                    if (fileExists('report.html')) {
+                        archiveArtifacts artifacts: 'report.html', fingerprint: true
+                    } else {
+                        echo 'No HTML report found'
+                    }
+                }
             }
         }
     }
