@@ -1,35 +1,28 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.9'
-            args '-v /tmp:/tmp'
-        }
+    agent any
+
+    environment {
+        PYTHON = 'python3'
+        ALLURE = 'allure'
     }
 
     stages {
-
-        stage('Install Dependencies') {
+        stage('Setup') {
             steps {
-                sh 'python -m pip install --upgrade pip'
-                sh 'pip install -r requirements.txt pytest'
+                sh 'pip install -r requirements.txt'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'pytest tests/ --junitxml=test-results.xml'
-            }
-            post {
-                always {
-                    junit 'test-results.xml'
-                }
+                sh 'pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
             }
         }
     }
 
     post {
         always {
-            echo 'Тестирование завершено.'
+            cleanWs()
         }
     }
 }
