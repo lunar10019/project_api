@@ -1,17 +1,15 @@
 pipeline {
-    agent any
-
-    environment {
-        PYTHON = 'python3'
-        ALLURE = 'allure'
+    agent {
+        docker {
+            image 'python:3.12'
+        }
     }
 
     stages {
-
         stage('Установка зависимостей') {
             steps {
                 sh 'git config --global --add safe.directory /var/jenkins_home/workspace/project_api_tests'
-                sh 'pip install -r requirements.txt'
+                sh 'python3 -m pip install -r requirements.txt --break-system-packages'
             }
         }
 
