@@ -1,8 +1,10 @@
 pipeline {
-    agent any
-
-    environment {
-        PYTHON = 'python3'
+    agent {
+        docker {
+            image 'python:3.9-slim'
+            args '-u root'
+            reuseNode true
+        }
     }
 
     stages {
@@ -12,33 +14,26 @@ pipeline {
             }
         }
 
-        stage('Verify Python') {
+        stage('Verify Environment') {
             steps {
-                script {
-                    def pythonExists = sh(script: 'command -v python3', returnStatus: true) == 0
-                    if (!pythonExists) {
-                        error("Python3 не найден! Установите Python3 на сервер Jenkins или используйте Docker-агент")
-                    }
-
-                    sh '${PYTHON} --version'
-                }
+                sh 'python --version'
+                sh 'pip --version'
             }
         }
 
-        stage('Setup Virtual Environment') {
+        stage('Install Dependencies') {
             steps {
-                sh '${PYTHON} -m venv venv'
-                sh '. venv/bin/activate && pip install -r requirements.txt'
+                sh 'pip install -r requirements.txt'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh '. venv/bin/activate && ${PYTHON} -m pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
+                sh 'pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
             }
         }
 
-        stage('Generate Reports') {
+        stage('Publish Reports') {
             steps {
                 allure includeProperties: false,
                       jdk: '',
@@ -48,9 +43,3 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            cleanWs()
-        }
-    }
-}
