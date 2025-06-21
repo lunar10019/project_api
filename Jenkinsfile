@@ -28,8 +28,6 @@ pipeline {
         }
     }
 
-    tools { git 'Git' }
-
     post {
         always {
             cleanWs()
