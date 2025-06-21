@@ -7,15 +7,23 @@ pipeline {
     }
 
     stages {
-        stage('Setup') {
+
+        stage('Установка зависимостей') {
             steps {
+                sh 'git config --global --add safe.directory /var/jenkins_home/workspace/project_api_tests'
                 sh 'pip install -r requirements.txt'
             }
         }
 
-        stage('Run Tests') {
+        stage('Запуск тестов') {
             steps {
-                sh 'pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
+                sh 'pytest tests/'
+            }
+            post {
+                always {
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
+                    archiveArtifacts artifacts: 'report.html', fingerprint: true
+                }
             }
         }
     }
@@ -26,3 +34,6 @@ pipeline {
         }
     }
 }
+
+
+
