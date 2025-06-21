@@ -1,9 +1,14 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3.9-slim'
+            args '-v /tmp:/tmp'
+        }
+    }
 
     environment {
-        PYTHON = 'python3'
-        ALLURE = 'allure'
+        PYTHON = 'python'
+        PIP = 'pip'
     }
 
     stages {
@@ -13,44 +18,27 @@ pipeline {
             }
         }
 
-        stage('Setup') {
+        stage('Setup Dependencies') {
             steps {
-                sh '''
-                    ${PYTHON} -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                    pip install pytest allure-pytest pytest-html
-                '''
+                sh '${PYTHON} --version'
+                sh '${PIP} --version'
+                sh '${PIP} install -r requirements.txt'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh '''
-                    . venv/bin/activate
-                    ${PYTHON} -m pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html
-                '''
+                sh '${PYTHON} -m pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
             }
         }
 
         stage('Generate Reports') {
             steps {
-                script {
-                    if (fileExists('allure-results')) {
-                        allure includeProperties: false,
-                              jdk: '',
-                              results: [[path: 'allure-results']]
-                    } else {
-                        echo 'No Allure results found'
-                    }
+                allure includeProperties: false,
+                      jdk: '',
+                      results: [[path: 'allure-results']]
 
-                    if (fileExists('report.html')) {
-                        archiveArtifacts artifacts: 'report.html', fingerprint: true
-                    } else {
-                        echo 'No HTML report found'
-                    }
-                }
+                archiveArtifacts artifacts: 'report.html', fingerprint: true
             }
         }
     }
