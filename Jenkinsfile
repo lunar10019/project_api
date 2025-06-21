@@ -19,27 +19,34 @@ pipeline {
                     if (!env.PYTHON) {
                         error("Python не найден! Установите Python 3 на сервер Jenkins")
                     }
-                    sh """
-                        echo "Используемый Python: ${PYTHON}"
-                        ${PYTHON} --version
-                    """
+                    echo "Используемый Python: ${env.PYTHON}"
+                    sh "${env.PYTHON} --version"
                 }
             }
         }
 
-        stage('Create Virtual Environment') {
+        stage('Setup Virtual Environment') {
             steps {
-                sh """
-                    ${PYTHON} -m venv "${VENV_DIR}" || ${PYTHON} -m virtualenv "${VENV_DIR}"
-                    . "${VENV_DIR}/bin/activate" && pip install --upgrade pip
-                """
+                script {
+                    try {
+                        sh """
+                            ${env.PYTHON} -m venv "${env.VENV_DIR}" || \
+                            ${env.PYTHON} -m virtualenv "${env.VENV_DIR}" || \
+                            { echo "Не удалось создать виртуальное окружение"; exit 1; }
+                        """
+                    } catch (Exception e) {
+                        error("Ошибка создания виртуального окружения: ${e.getMessage()}")
+                    }
+                }
             }
         }
 
         stage('Install Dependencies') {
             steps {
                 sh """
-                    . "${VENV_DIR}/bin/activate" && pip install -r requirements.txt
+                    . "${env.VENV_DIR}/bin/activate" && \
+                    pip install --upgrade pip && \
+                    pip install -r requirements.txt
                 """
             }
         }
@@ -47,7 +54,7 @@ pipeline {
         stage('Run Tests') {
             steps {
                 sh """
-                    . "${VENV_DIR}/bin/activate" && \
+                    . "${env.VENV_DIR}/bin/activate" && \
                     pytest tests/test_httpbin_api.py -v \
                         --alluredir=allure-results \
                         --html=report.html \
