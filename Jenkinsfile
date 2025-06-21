@@ -1,10 +1,9 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.9-slim'
-            args '-u root'
-            reuseNode true
-        }
+    agent any
+
+    environment {
+        PYTHON = sh(script: 'command -v python3 || command -v python', returnStdout: true).trim()
+        VENV_DIR = "${WORKSPACE}/venv"
     }
 
     stages {
@@ -14,22 +13,46 @@ pipeline {
             }
         }
 
-        stage('Setup Environment') {
+        stage('Verify Python') {
             steps {
-                sh 'python --version'
-                sh 'pip --version'
+                script {
+                    if (!env.PYTHON) {
+                        error("Python не найден! Установите Python 3 на сервер Jenkins")
+                    }
+                    sh """
+                        echo "Используемый Python: ${PYTHON}"
+                        ${PYTHON} --version
+                    """
+                }
+            }
+        }
+
+        stage('Create Virtual Environment') {
+            steps {
+                sh """
+                    ${PYTHON} -m venv "${VENV_DIR}" || ${PYTHON} -m virtualenv "${VENV_DIR}"
+                    . "${VENV_DIR}/bin/activate" && pip install --upgrade pip
+                """
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'pip install -r requirements.txt'
+                sh """
+                    . "${VENV_DIR}/bin/activate" && pip install -r requirements.txt
+                """
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
+                sh """
+                    . "${VENV_DIR}/bin/activate" && \
+                    pytest tests/test_httpbin_api.py -v \
+                        --alluredir=allure-results \
+                        --html=report.html \
+                        --self-contained-html
+                """
             }
         }
 
