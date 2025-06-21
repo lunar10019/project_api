@@ -14,7 +14,7 @@ pipeline {
             }
         }
 
-        stage('Verify Environment') {
+        stage('Setup Environment') {
             steps {
                 sh 'python --version'
                 sh 'pip --version'
@@ -43,3 +43,9 @@ pipeline {
         }
     }
 
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
