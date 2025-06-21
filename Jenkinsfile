@@ -1,46 +1,35 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.9'
-            args '-u root'
-        }
-    }
+    agent any
 
     environment {
         PYTHON = 'python3'
-        PIP = 'pip3'
-        ALLURE = 'allure'
     }
 
     stages {
-        stage('Получение кода') {
+        stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Установка зависимостей') {
+        stage('Setup Dependencies') {
             steps {
-                sh '${PIP} install --upgrade pip'
-                sh '${PIP} install -r requirements.txt'
-                sh '${PIP} install pytest allure-pytest'
+                sh '${PYTHON} -m pip install -r requirements.txt'
             }
         }
 
-        stage('Запуск тестов') {
+        stage('Run Tests') {
             steps {
-                sh '${PYTHON} -m pytest tests/ --alluredir=allure-results'
+                sh '${PYTHON} -m pytest tests/test_httpbin_api.py -v --alluredir=allure-results --html=report.html --self-contained-html'
             }
-            post {
-                always {
-                    allure([
-                        includeProperties: false,
-                        jdk: '',
-                        results: [[path: 'allure-results']],
-                        reportBuildPolicy: 'ALWAYS'
-                    ])
-                    archiveArtifacts(artifacts: 'allure-results/**', fingerprint: true)
-                }
+        }
+
+        stage('Generate Reports') {
+            steps {
+                allure includeProperties: false,
+                      jdk: '',
+                      results: [[path: 'allure-results']]
+                archiveArtifacts artifacts: 'report.html', fingerprint: true
             }
         }
     }
